@@ -1,11 +1,13 @@
-# RL-tutorial
+# RL-evators
 
-Quick research project to learn the basics of reinforcement learning using PyTorch. This is a 3-stage project.
+Quick research project to learn the basics of reinforcement learning using PyTorch and Gymnasium. This is a 3-stage project.
 
 ## Stage 1 (POC research)
-I am implementing different reinforcement learning agents on some of gymnasium's games.
+I am implementing different reinforcement learning agents on some of Gymnasium's existing games.
 - Random agent on CartPole
-- DQNAgent on CartPole
+- DQN agent on CartPole
+- A2C agent on LunarLander
+- A2C agent on BipedalWalker
 
 ## Stage 2 (student building)
 
