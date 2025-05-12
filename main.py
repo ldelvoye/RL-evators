@@ -1,48 +1,39 @@
-# %% 
-# Imports
+#%%
 import gymnasium as gym
-import random
-
-# %%
-env = gym.make("CartPole-v1", render_mode="human")
-states = env.observation_space.shape[0]
-actions = env.action_space.n
-
-# %%
-episodes = 10
-for episode in range(1, episodes + 1):
-    state, _ = env.reset()
-    done = False
-    score = 0
-
-    while not done:
-        env.render()
-        action = random.choice([0, 1])
-        n_state, reward, terminated, truncated, _ = env.step(action)
-        done = terminated or truncated
-        score += reward
-
-    print(f"Episode:{episode} Score:{score}")
-
-# %%
 import numpy as np
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Dense, Flatten
-from tensorflow.keras.optimizers import Adam
-
-def build_model(states, actions):
-    model = Sequential()
-    model.add(Flatten(input_shape=(1, states)))
-    model.add(Dense(24, activation="relu"))
-    model.add(Dense(24, activation="relu"))
-    model.add(Dense(actions, activation="linear"))
-    return model
-
-model = build_model(states, actions)
-model.summary()
+import matplotlib.pyplot as plt
 
 # %%
-from rl.agents import DQNAgent
-from rl.policy import BoltzmannQPolicy
-from rl.memory import SequentialMemory
+# Create the CartPole environment
+env = gym.make("CartPole-v1", render_mode=None)  # use "human" if you want to see it
+
 # %%
+episode_rewards = []
+
+# Run 100 episodes
+for episode in range(100):
+    state, _ = env.reset()
+    total_reward = 0
+
+    for t in range(500):  # Max steps per episode
+        action = env.action_space.sample()  # Random action
+        next_state, reward, terminated, truncated, _ = env.step(action)
+        total_reward += reward
+
+        if terminated or truncated:
+            break
+
+        state = next_state
+
+    episode_rewards.append(total_reward)
+    print(f"Episode {episode + 1}: reward = {total_reward}")
+
+env.close()
+
+# %%
+plt.plot(episode_rewards)
+plt.xlabel("Episode")
+plt.ylabel("Total Reward")
+plt.title("Random Agent on CartPole")
+plt.grid(True)
+plt.show()
