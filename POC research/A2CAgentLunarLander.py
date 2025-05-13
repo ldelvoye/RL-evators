@@ -10,7 +10,7 @@ import multiprocessing
 
 #%% Hyperparameters
 num_envs = 8
-num_episodes = 500
+num_episodes = 1500
 max_steps = 500
 gamma = 0.99
 lr = 1e-3
@@ -43,7 +43,7 @@ class A2CAgent:
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
 
     def select_action(self, states):
-        states = torch.FloatTensor(states).to(self.device)
+        states = torch.from_numpy(np.array(states)).float().to(self.device)
         probs, values = self.model(states)
         dist = torch.distributions.Categorical(probs)
         actions = dist.sample()
@@ -53,7 +53,7 @@ class A2CAgent:
     def update(self, trajectories):
         states, log_probs, rewards, dones, values, next_values = trajectories
 
-        states = torch.FloatTensor(states).to(self.device)
+        states = torch.from_numpy(np.array(states)).float().to(self.device)
         log_probs = torch.stack(log_probs).to(self.device)
         rewards = torch.FloatTensor(rewards).to(self.device)
         dones = torch.FloatTensor(dones).to(self.device)
@@ -67,13 +67,22 @@ class A2CAgent:
             returns[t] = R
 
         advantages = returns - values
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+
+        # Compute entropy bonus
+        with torch.no_grad():
+            probs, _ = self.model(states)
+        dist = torch.distributions.Categorical(probs)
+        entropy = dist.entropy().mean()
+        entropy_coef = 0.01
 
         actor_loss = -(log_probs * advantages.detach()).mean()
         critic_loss = advantages.pow(2).mean()
-        loss = actor_loss + 0.5 * critic_loss
+        loss = actor_loss + 0.5 * critic_loss - entropy_coef * entropy
 
         self.optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=0.5)
         self.optimizer.step()
 
 #%% Environment Creation
@@ -153,14 +162,23 @@ if __name__ == "__main__":
 
         # Optional rendering of env 0
         if (episode + 1) % render_every == 0:
-            eval_env = gym.make("LunarLander-v3", render_mode="human")
-            obs, _ = eval_env.reset()
+            video_env = gym.make("LunarLander-v3", render_mode="rgb_array_list")
+            obs, _ = video_env.reset()
+            frames = []
             for _ in range(max_steps):
                 eval_action, _, _ = agent.select_action([obs])
-                obs, _, terminated, truncated, _ = eval_env.step(eval_action[0])
+                obs, _, terminated, truncated, _ = video_env.step(eval_action[0])
                 if terminated or truncated:
                     break
-            eval_env.close()
+            video = video_env.render()
+            video_env.close()
+
+            import os
+            import imageio
+            os.makedirs("videos", exist_ok=True)
+            output_path = f"videos/episode_{episode + 1}.mp4"
+            imageio.mimsave(output_path, video, fps=30)
+            print(f"Saved episode {episode + 1} to {output_path}")
 
     env.close()
 
@@ -176,7 +194,7 @@ if __name__ == "__main__":
     plt.axhline(200, color='red', linestyle='--', label='Solved Threshold (200)')
     plt.xlabel("Episode")
     plt.ylabel("Reward")
-    plt.title("Vectorized A2C on LunarLander-v3 (Async)")
+    plt.title("Vectorized A2C on LunarLander-v3 (Async + Optional Render)")
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
