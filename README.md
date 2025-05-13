@@ -4,9 +4,9 @@ Quick research project to learn the basics of reinforcement learning using PyTor
 
 ## Stage 1 (POC research)
 I am implementing different reinforcement learning agents on some of Gymnasium's existing games.
-- Random agent on CartPole
-- DQN agent on CartPole
-- A2C agent on LunarLander
+- Random agent on CartPole ✅
+- DQN agent on CartPole ✅
+- A2C agent on LunarLander ✅
 - A2C agent on BipedalWalker
 
 ## Stage 2 (student building)

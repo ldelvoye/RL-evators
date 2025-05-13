@@ -10,7 +10,6 @@ import matplotlib.pyplot as plt
 
 #%% Visualization Settings
 render_simulation = True     # Toggle to False to disable game rendering
-visualize_model = True       # Toggle to False to skip network graph export
 
 #%% Q-Network
 class QNetwork(nn.Module):
@@ -111,19 +110,6 @@ state_dim = env.observation_space.shape[0]
 action_dim = env.action_space.n
 
 agent = DQNAgent(state_dim, action_dim)
-
-#%% Visualize Neural Network (TorchViz)
-if visualize_model:
-    try:
-        from torchviz import make_dot
-        dummy_input = torch.randn(1, state_dim).to(agent.device)
-        output = agent.q_net(dummy_input)
-        dot = make_dot(output, params=dict(agent.q_net.named_parameters()))
-        dot.format = "png"
-        dot.render("q_network_graph", cleanup=True)
-        print("Saved network graph to q_network_graph.png")
-    except ImportError:
-        print("torchviz not installed. Run `pip install torchviz` to enable network graph visualization.")
 
 #%% Agent Training
 num_episodes = 300
