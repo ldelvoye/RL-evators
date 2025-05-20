@@ -10,7 +10,7 @@ import multiprocessing
 
 #%% Hyperparameters
 num_envs = 8
-num_episodes = 1500
+num_episodes = 2500
 max_steps = 500
 gamma = 0.99
 lr = 1e-3
@@ -50,7 +50,7 @@ class A2CAgent:
         log_probs = dist.log_prob(actions)
         return actions.cpu().numpy(), log_probs, values.squeeze(-1)
 
-    def update(self, trajectories):
+    def update(self, trajectories, entropy_coef=0.01):
         states, log_probs, rewards, dones, values, next_values = trajectories
 
         states = torch.from_numpy(np.array(states)).float().to(self.device)
@@ -74,7 +74,7 @@ class A2CAgent:
             probs, _ = self.model(states)
         dist = torch.distributions.Categorical(probs)
         entropy = dist.entropy().mean()
-        entropy_coef = 0.01
+        # entropy_coef is now passed in from training loop
 
         actor_loss = -(log_probs * advantages.detach()).mean()
         critic_loss = advantages.pow(2).mean()
@@ -104,6 +104,11 @@ if __name__ == "__main__":
     #%% Training Loop
     reward_history = []
     state, _ = env.reset()
+
+    best_mean_reward = -float('inf')
+    stagnation_counter = 0
+    entropy_boost_active = False
+    entropy_coef = 0.01
 
     for episode in range(num_episodes):
         all_rewards = np.zeros(num_envs)
@@ -154,11 +159,25 @@ if __name__ == "__main__":
             stacked_next_values
         )
 
-        agent.update(stacked_trajectories)
+        agent.update(stacked_trajectories, entropy_coef=entropy_coef)
 
         mean_reward = all_rewards.mean()
         reward_history.append(mean_reward)
-        print(f"Episode {episode + 1}, Mean Reward: {mean_reward:.2f}")
+        # Update entropy if no improvement
+        if mean_reward > best_mean_reward + 5:
+            best_mean_reward = mean_reward
+            stagnation_counter = 0
+            entropy_coef = 0.01
+            entropy_boost_active = False
+        else:
+            stagnation_counter += 1
+
+        if stagnation_counter >= 100 and not entropy_boost_active:
+            print(f"Entropy boost triggered at episode {episode + 1}")
+            entropy_coef = 0.05
+            entropy_boost_active = True
+
+        print(f"Episode {episode + 1}, Mean Reward: {mean_reward:.2f}, Max: {best_mean_reward:.2f} ~ {stagnation_counter}")
 
         # Optional rendering of env 0
         if (episode + 1) % render_every == 0:
